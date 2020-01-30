@@ -1,0 +1,189 @@
+---
+title: "Arctic Sea Ice"
+author: "Kyle Oliveira, Arianna Torello, Meg VanHorn"
+date: "1/30/2020"
+output: 
+  html_document: default
+  pdf_document: default
+  md_document:
+    variant: markdown_github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Sea Ice
+
+This is an R Markdown document to help walk through the process of our code that examines the Arctic sea ice area through the period of November 1978 to December 2019.
+
+First, we will need to import our data.
+
+```{r}
+the_file<-"~/Desktop/8thSemester/GEOG456/data/SeaIceMaster.csv"
+df<-read.csv(the_file)
+```
+
+Let's create a better column for the date by combining together the month and year columns.
+
+```{r}
+df$date <- with(df, sprintf("%d-%02d", year, mo))
+```
+
+We will need a few packages to complete this work so let us install those.
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(RColorBrewer)
+```
+
+Let's also find the average area of the sea ice in our data set. This will come in use in our analysis later.
+```{r}
+avg_area <- mean(df$area)
+```
+
+And let's make the month column a character value instead of a numeric value.
+```{r}
+mymonths <- c("Jan","Feb","Mar",
+              "Apr","May","Jun",
+              "Jul","Aug","Sep",
+              "Oct","Nov","Dec")
+df$month <- mymonths[ df$mo ]
+
+```
+
+Great! Now that we have all of that settled, lets begin to make our figures!
+
+For our first figure lets just get a feel for what we're working with. Let's create a dot plot that shows the extent of the ice. But we want to include area as well, so lets change the size of the dots to reflect how area has changed as well. We will want to see how these two features have changed over time so lets put the year (our time value) on the x-axis and make the color of our dots equal to year as well for an aesthetically pleasing gradient.
+
+```{r}
+ggplot(df, aes(x = year, y = extent, size = area, color = year)) +
+  geom_point()
+```
+
+That looks great. Let's call this figure our Figure 1. That way when we call fig1 it will produce this picture.
+
+```{r}
+fig1<-ggplot(df, aes(x = year, y = extent, size = area, color = year)) +
+  geom_point()
+```
+
+It is hard to tell the difference between extent and area in our first figure so lets create a line plot that shows how the two differ. Our red line will be the area, and the blue line with grey background will be the extent of the Arctic sea ice. We'll rename the y-axis to be more descriptive, and change the theme so the standard deviation of the extent doesn't blend with the background. We won't need a legend since the description of colors is in the y-axis.
+
+```{r}
+ggplot(df)+
+  geom_smooth(aes(x=year, y=extent))+
+  geom_smooth(aes(x=year, y=area, color="red" ,fill="red"))+
+  expand_limits(y=0)+
+  theme_bw() +
+  labs(x = "Year",y='Extent(blue)/ Area(red) ('~km^2~x10^6*')')+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+       legend.position = "none"
+  )
+```
+
+Looks great! Lets name this figure 2 and have it saved as such so we can call on it when needed.
+
+```{r}
+fig2<-ggplot(df)+
+  geom_smooth(aes(x=year, y=extent))+
+  geom_smooth(aes(x=year, y=area, color="red" ,fill="red"))+
+  expand_limits(y=0)+
+  theme_bw() +
+  labs(x = "Year",y='Extent (blue) / Area (red) ('~km^2~x10^6*')')+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+
+So now that we've seen how area and extent differ, let's work with just area, because it gives a better depiciton of how the ice ice changing as a whole and not just how far the ice extends in the Arctic.
+
+Since we are working with just area, let's see how it changes temporally (throughout the year) and also how the area has changed over the years. To do this we'll create a line plot that shows the temporal changes, but each line will be an individual year. To do this, we will need to change our year variable into a factor, so we can use it to be individual inputs.
+
+```{r}
+df$yearf <- as.factor(df$year)
+```
+
+Now that that's done, we can make our figure. Don't forget to add units to the y-axis so the viewer knows what we're working with.
+
+```{r}
+ggplot(df, aes(x=mo, y=area, color=yearf))+
+  expand_limits(y=0)+
+  coord_cartesian(xlim = c(1,12))+
+  labs(x = "Month", y='Area ('~km^2~x10^6*')', color="Year")+
+  theme_classic()+
+  geom_line()
+```
+
+Wow! You can really see how the ice area reaches a low point in the late summer and early fall months. You can also really see how in recent years the ice area has been much less than in earlier years in the data set.
+
+Let's save this figure as figure 3 for later.
+
+```{r}
+fig3<-ggplot(df, aes(x=mo, y=area, color=year))+
+  expand_limits(y=0)+
+  coord_cartesian(xlim = c(1,12))+
+  labs(x = "Month", y='Area ('~km^2~x10^6*')', color="Year")+
+  theme_classic()+
+  geom_line()
+```
+
+Let's play around a bit and make an aesthetically pleasing graph that really makes the viewer interested and want to ask more. A good way to do this would be to create a circular graph that can show how the ice has grown and shrunk with respect to its average ice area (which we calculated earlier). So if we create a histogram and wrap that around a central point, we can end up with this type of graph. The graph will begin with November 1978 being at the very top of the graph and will circle all the way around so December of 2019 will be the last entry. Think of this graph as a clock with November of 1978 as 12:00 and with December of 2019 as 11:59.
+
+```{r}
+ggplot(df)+
+  geom_bar(aes(x=date, y=area-avg_area, fill = area-avg_area), stat = "identity")+
+  scale_fill_gradientn(colours = colorRampPalette(brewer.pal(11, "RdBu"))(11))+
+  theme_minimal() + 
+  theme(
+    axis.text.x = element_blank(),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+  )+
+  scale_y_discrete(name='Area ('~km^2~x10^6*')', limits=c(-7, 0, 5))+
+  labs(title = "Area Difference of Arctic Sea Ice over time (1978-2019)", fill = 'Area ('~km^2~x10^6*')')+
+  coord_polar(theta = "x")
+
+```
+
+This is really cool! In this graph we can see how the ice switches back and forth between negative and positive values for ice area throughout the years. But what really stands out is how much shorter positive values have gotten in recent years and also how much deeper negative values go in recent years as well. We see a much deeper red from about 9:00 onward to 11:59. Looking at this graph we can see the fluctuation of ice area really well, and also the yearly trends in decreased ice area.
+
+Let's save this figure as figure 4.
+
+```{r}
+fig4<-ggplot(df)+
+  geom_bar(aes(x=date, y=area-avg_area, fill = area-avg_area), stat = "identity")+
+  scale_fill_gradientn(colours = colorRampPalette(brewer.pal(11, "RdBu"))(11))+
+  theme_minimal() + 
+  theme(
+    axis.text.x = element_blank(),
+    axis.title.x = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+  )+
+  scale_y_discrete(name='Area ('~km^2~x10^6*')', limits=c(-7, 0, 5))+
+  labs(title = "Area Difference of Arctic Sea Ice over time (1978-2019)", fill = 'Area ('~km^2~x10^6*')')+
+  coord_polar(theta = "x")
+```
+
+Lets see all four of our figures in one place to end this walk-through.
+```{r}
+fig1
+fig2
+fig3
+fig4
+```
+
+These plots are unique and fun ways to visual changes in Sea Ice extent and area over time. We hope you've enjoyed coding with us, and have learned a bit more about plotting in RStudio! 
+
+Acknowledgments: Thanks to the National Snow and Ice Data Center for collecting the Sea Ice Index data, which we utilized in this program.
+
+
